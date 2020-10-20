@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <linux/i2c-dev.h>
+#include <sstream>
 
 namespace passbutter
 {
@@ -13,44 +14,65 @@ namespace passbutter
 ThunderBorg::ThunderBorg(const char *name)
     : name_(name)
 {
-    // open a channel to the I2C device
-    dev_ = open(I2CADDR, O_RDWR);
- 
-    if (dev_ < 0)
-    {
-        std::cerr << "could not load I2C module.."
-            << I2CADDR << " "
-            << strerror(errno) << std::endl;
-    }
 }
 
 ThunderBorg::~ThunderBorg()
 {
-    if (dev_ > 0)
+    if (this->i2cRead > 0)
     {
-        close(dev_);
-        dev_ = -1;
+        close(this->i2cRead);
+        this->i2cRead = -1;
+    }
+    
+    if (this->i2cWrite > 0)
+    {
+        close(this->i2cWrite);
+        this->i2cWrite = -1;
     }
 }
 
-bool ThunderBorg::bind(int addr)
+void ThunderBorg::initBus(int busNumber, int address)
 {
-    if (ioctl(dev_, I2C_SLAVE, addr) < 0)
+    this->busNumber = busNumber;
+    this->i2cAddress = address;
+    const char* i2cAddr = I2CADDR + this->busNumber;
+    
+    std::stringstream errMsg;
+    if ((this->i2cRead = ::open(i2cAddr, O_RDONLY)) < 0)
     {
-        std::cerr << name_.c_str()
-            << " addr: 0x" << std::hex << addr << std::dec
-            << " error: " << strerror(errno) << std::endl;
-        return false;
+        errMsg << "failed to open i2c read address " << i2cAddr;
+        throw std::runtime_error(errMsg.str().c_str());
     }
     
-    std::cout << "Channel #" << dev_
+    if ((this->i2cWrite = ::open(i2cAddr, O_WRONLY)) < 0)
+    {
+        errMsg << "failed to open i2c write address " << i2cAddr;
+        throw std::runtime_error(errMsg.str().c_str());
+    }
+    
+    bind(this->i2cRead, this->i2cAddress);
+    bind(this->i2cWrite, this->i2cAddress);
+}
+
+void ThunderBorg::bind(int fd, int addr)
+{
+    std::stringstream errMsg;
+    
+    if (ioctl(fd, I2C_SLAVE, addr) < 0)
+    {
+        errMsg << name_.c_str()
+            << " addr: 0x" << std::hex << addr << std::dec
+            << " error: " << strerror(errno);
+        throw std::runtime_error(errMsg.str().c_str());
+    }
+    
+    std::cout << "Channel #" << fd
         << " for " << name_.c_str()
         << "0x" << std::hex << addr << std::dec
         << " is open." << std::endl;
-    return true;
 }
 
-bool ThunderBorg::read(passbutter::Command cmd, int length, std::string &data, int retryCount = 3)
+bool ThunderBorg::read(passbutter::Command cmd, int length, std::string &data, int retryCount)
 {
     unsigned char buffer[256];
     std::vector<int> cmdData;
@@ -58,7 +80,7 @@ bool ThunderBorg::read(passbutter::Command cmd, int length, std::string &data, i
     for (int i = 0; i < retryCount; i++)
     {
         write(cmd, cmdData);
-        if (::read(dev_, buffer, length) != length)
+        if (::read(this->i2cRead, buffer, length) != length)
         {
             continue;
         }
@@ -71,7 +93,7 @@ bool ThunderBorg::read(passbutter::Command cmd, int length, std::string &data, i
     return false;
 }
 
-void ThunderBorg::write(passbutter::Command cmd, std::vector<int> data)
+bool ThunderBorg::write(passbutter::Command cmd, std::vector<int> data)
 {
     std::string sample = std::to_string(cmd);
     
@@ -82,15 +104,51 @@ void ThunderBorg::write(passbutter::Command cmd, std::vector<int> data)
     unsigned char buffer[256];
     std::copy(sample.begin(), sample.end(), buffer);
 
-    if (::write(dev_, buffer, sample.length()) != sample.length())
+    if (::write(this->i2cWrite, buffer, sample.length()) != sample.length())
     {
         printf("Failed to write to the i2c bus.\n");
+        return false;
     }
+    
+    return true;
 }
 
-void ThunderBorg::detectBoards()
+std::vector<int> ThunderBorg::detectBoards(int busNumber)
 {
     std::cout << "detect boards.." << std::endl;
+    std::vector<int> boardAddrs;
+    
+    for (int address = 0x03; address <= 0x78; address++)
+    {
+        try
+        {
+            initBus(busNumber, address);
+            std::string data;
+            read(COMMAND_GET_ID, I2C_MAX_LEN, data);
+            if (data.length() == I2C_MAX_LEN) {
+                if (data[1] == I2C_ID_THUNDERBORG)
+                {
+                    std::cout << "found thunderborg at " << address << std::endl;
+                    boardAddrs.push_back(address);
+                }
+            }
+        }
+        catch (...)
+        {
+            
+        }
+    }
+    
+    if (boardAddrs.size() == 0)
+    {
+        std::cout << "no boards detected.." << std::endl;
+    }
+    else
+    {
+        std::cout << "found " << boardAddrs.size() << " boards.." << std::endl;
+    }
+    
+    return boardAddrs;
 }
 
 }

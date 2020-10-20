@@ -51,13 +51,12 @@ public:
     ThunderBorg(const char *name);
     ~ThunderBorg();
     
-    void detectBoards();
-    bool bind(int addr);
-    void write(Command cmd, std::vector<int> data);
-    bool read(passbutter::Command cmd, int length, std::string &data, int retryCount);
+    std::vector<int> detectBoards(int busNumber = 1);
+    bool write(Command cmd, std::vector<int> data);
+    bool read(passbutter::Command cmd, int length, std::string &data, int retryCount = 3);
     
 private:
-    const char *I2CADDR                     = "/dev/i2c-1";     // I2C device
+    const char *I2CADDR                     = "/dev/i2c-";       // I2C device
     
     const int I2C_SLAVE                     = 0x0703;
     const int PWM_MAX                       = 255;
@@ -69,8 +68,15 @@ private:
 
     const int I2C_ID_THUNDERBORG             = 0x15;
     
-    int dev_;
+    int busNumber;
+    int i2cAddress;
+    int i2cRead;
+    int i2cWrite;
+    
     std::string name_;
+    
+    void initBus(int busNumber, int address);
+    void bind(int fd, int addr);
 };
 
 }
