@@ -12,7 +12,7 @@ namespace passbutter
 {
     
 I2CChannel::I2CChannel(int busNumber, int mode)
-    : address(I2CADDR + busNumber)
+    : address((i2cAddrBase + std::to_string(busNumber)).c_str())
 {
     if ((this->channel = ::open(this->address, mode)) < 0)
     {
