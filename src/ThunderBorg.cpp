@@ -11,18 +11,19 @@
 namespace passbutter
 {
     
-I2CChannel::I2CChannel(int busNumber, int mode)
-    : address((i2cAddrBase + std::to_string(busNumber)).c_str())
+I2CChannel::I2CChannel(int busNumber, int address, int mode)
+    : path((i2cBasePath + std::to_string(busNumber)).c_str()),
+      address(address)
 {
-    if ((this->channel = ::open(this->address, mode)) < 0)
+    if ((this->channel = ::open(this->path, mode)) < 0)
     {
-        std::cout << "failed to open i2c read address " << this->address << std::endl;
-        throw std::runtime_error("failed to open channel");
+        std::cout << "failed to open i2c path " << this->path << std::endl;
+        throw std::runtime_error("failed to i2c path");
     }
     
     
     std::cout << "successfully opened i2c channel" << std::endl
-              << "  => address " << this->address << std::endl
+              << "  => address " << this->path << std::endl
               << "  => mode " << mode << std::endl;
     
     this->bind();
@@ -55,8 +56,8 @@ I2CChannel::~I2CChannel()
 I2CBus::I2CBus(int busNumber, int address)
     : busNumber(busNumber),
       address(address),
-      i2cRead(I2CChannel(busNumber, O_RDONLY)),
-      i2cWrite(I2CChannel(busNumber, O_WRONLY))
+      i2cRead(I2CChannel(busNumber, address, O_RDONLY)),
+      i2cWrite(I2CChannel(busNumber, address, O_WRONLY))
 {
 }
 

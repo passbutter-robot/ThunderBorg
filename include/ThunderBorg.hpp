@@ -47,13 +47,14 @@ enum Command
 class I2CChannel
 {
 public:
-    I2CChannel(int busNumber, int mode);
+    I2CChannel(int busNumber, int address, int mode);
     ~I2CChannel();
     
 private:
-    const std::string i2cAddrBase = "/dev/i2c-";       // I2C device
+    const std::string i2cBasePath = "/dev/i2c-";       // I2C device
     
-    const char* address;
+    const char* path;
+    int address;
     int channel;
     
     void bind();
