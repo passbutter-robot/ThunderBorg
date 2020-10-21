@@ -51,7 +51,7 @@ public:
     ~I2CChannel();
     
 private:
-    const char *I2CADDR = "/dev/i2c-";       // I2C device
+    const std::string i2cAddrBase = "/dev/i2c-";       // I2C device
     
     const char* address;
     int channel;
