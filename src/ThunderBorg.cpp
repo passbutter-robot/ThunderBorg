@@ -69,16 +69,23 @@ bool I2CBus::read(passbutter::Command cmd, int length, std::string &data, int re
     for (int i = 0; i < retryCount; i++)
     {
         write(cmd, cmdData);
-        if (::read(this->i2cRead.channel, buffer, length) != length)
-        {
-            continue;
+        int resultLength = ::read(this->i2cRead.channel, &buffer, length);
+	if (resultLength <= 0) continue;
+
+        for (int j = 0; j < resultLength; j++) {
+            printf("%c\n", buffer[j]);
         }
-        
-        data = std::string(buffer, buffer + length);
-        return true;
+
+	data = std::string(reinterpret_cast<char*>(buffer), resultLength);
+	std::cout << "read result length=" << resultLength << "buffer[0]=" << buffer[0] << ", data= " << data << std::endl;
+
+	if (data[0] == cmd)
+        {
+	    return true;
+        }
     }
     
-    std::cout << "Failed to acquire bus access and/or talk to slave.." << std::endl;
+    std::cout << "failed to read data from channel" << std::endl;
     return false;
 }
 
@@ -90,10 +97,12 @@ bool I2CBus::write(passbutter::Command cmd, std::vector<int> data)
         sample += std::to_string(*it);
     }
     
-    unsigned char buffer[256];
-    std::copy(sample.begin(), sample.end(), buffer);
+    std::cout << "write sample= " << sample << ", len=" << sample.length() << std::endl;
 
-    if (::write(this->i2cWrite.channel, buffer, sample.length()) != sample.length())
+    int resultLength = ::write(this->i2cWrite.channel, sample.c_str(), sample.length());
+    std::cout << "write sample= " << sample << ", target len=" << sample.length() << ", current len=" << resultLength << std::endl;
+
+    if (resultLength != sample.length())
     {
         printf("Failed to write to the i2c bus.\n");
         return false;
@@ -120,14 +129,14 @@ std::vector<int> ThunderBorg::detectBoards(int busNumber)
     std::cout << "detect boards.." << std::endl;
     std::vector<int> boardAddrs;
     
-    for (int address = 0x03; address <= 0x78; address++)
+    for (int address = 0x03; address <= 0x20; address++)
     {
         try
         {
             I2CBus i2cBus = I2CBus(busNumber, address);
             
             std::string data;
-            if (i2cBus.read(COMMAND_GET_ID, I2C_MAX_LEN, data) && data.length() == I2C_MAX_LEN) {
+            if (i2cBus.read(COMMAND_GET_ID, I2C_MAX_LEN, data)) {
                 if (data[1] == I2C_ID_THUNDERBORG)
                 {
                     std::cout << "found thunderborg at " << address << std::endl;
