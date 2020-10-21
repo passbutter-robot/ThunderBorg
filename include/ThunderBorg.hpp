@@ -44,6 +44,40 @@ enum Command
     COMMAND_ANALOG_MAX          = 0x3FF // Maximum value for analog readings   
 };
 
+class I2CChannel
+{
+public:
+    I2CChannel(int busNumber, int mode);
+    ~I2CChannel();
+    
+private:
+    const char *I2CADDR = "/dev/i2c-";       // I2C device
+    
+    const char* address;
+    int channel;
+    
+    void bind();
+    
+    friend class I2CBus;
+};
+
+class I2CBus
+{
+public:
+    I2CBus(int busNumber, int address);
+    ~I2CBus();
+    
+    bool write(Command cmd, std::vector<int> data);
+    bool read(passbutter::Command cmd, int length, std::string &data, int retryCount = 3);
+    
+private:
+    int busNumber;
+    int address;
+    
+    I2CChannel i2cRead;
+    I2CChannel i2cWrite;
+};
+
 class ThunderBorg
 {
     
@@ -52,12 +86,9 @@ public:
     ~ThunderBorg();
     
     std::vector<int> detectBoards(int busNumber = 1);
-    bool write(Command cmd, std::vector<int> data);
-    bool read(passbutter::Command cmd, int length, std::string &data, int retryCount = 3);
     
-private:
-    const char *I2CADDR                     = "/dev/i2c-";       // I2C device
     
+private:    
     const int I2C_SLAVE                     = 0x0703;
     const int PWM_MAX                       = 255;
     const int I2C_MAX_LEN                   = 6;
@@ -68,15 +99,9 @@ private:
 
     const int I2C_ID_THUNDERBORG             = 0x15;
     
-    int busNumber;
-    int i2cAddress;
-    int i2cRead;
-    int i2cWrite;
+    I2CBus *bus;
     
     std::string name_;
-    
-    void initBus(int busNumber, int address);
-    void bind(int fd, int addr);
 };
 
 }

@@ -10,69 +10,57 @@
 
 namespace passbutter
 {
+    
+I2CChannel::I2CChannel(int busNumber, int mode)
+    : address(I2CADDR + busNumber)
+{
+    if ((this->channel = ::open(this->address, mode)) < 0)
+    {
+        std::cout << "failed to open i2c read address " << this->address << std::endl;
+        throw std::runtime_error("failed to open channel");
+    }
+    
+    
+    std::cout << "successfully opened i2c channel" << std::endl
+              << "  => address " << this->address << std::endl
+              << "  => mode " << mode << std::endl;
+    
+    this->bind();
+}
 
-ThunderBorg::ThunderBorg(const char *name)
-    : name_(name)
+void I2CChannel::bind()
+{
+    if (ioctl(this->channel, I2C_SLAVE, this->address) < 0)
+    {
+        std::cout << " addr: 0x" << std::hex << this->address << std::dec
+                  << " error: " << strerror(errno)
+                  << std::endl;
+        throw std::runtime_error("failed to bind channel address");
+    }
+    
+    std::cout << "successfully bound channel #" << this->channel
+        << "to address " << "0x" << std::hex << this->address << std::dec
+        << std::endl;
+}
+
+I2CChannel::~I2CChannel()
+{
+    if (this->channel > 0)
+    {
+        close(this->channel);
+        this->channel = -1;
+    }
+}
+    
+I2CBus::I2CBus(int busNumber, int address)
+    : busNumber(busNumber),
+      address(address),
+      i2cRead(I2CChannel(busNumber, O_RDONLY)),
+      i2cWrite(I2CChannel(busNumber, O_WRONLY))
 {
 }
 
-ThunderBorg::~ThunderBorg()
-{
-    if (this->i2cRead > 0)
-    {
-        close(this->i2cRead);
-        this->i2cRead = -1;
-    }
-    
-    if (this->i2cWrite > 0)
-    {
-        close(this->i2cWrite);
-        this->i2cWrite = -1;
-    }
-}
-
-void ThunderBorg::initBus(int busNumber, int address)
-{
-    this->busNumber = busNumber;
-    this->i2cAddress = address;
-    const char* i2cAddr = I2CADDR + this->busNumber;
-    
-    std::stringstream errMsg;
-    if ((this->i2cRead = ::open(i2cAddr, O_RDONLY)) < 0)
-    {
-        errMsg << "failed to open i2c read address " << i2cAddr;
-        throw std::runtime_error(errMsg.str().c_str());
-    }
-    
-    if ((this->i2cWrite = ::open(i2cAddr, O_WRONLY)) < 0)
-    {
-        errMsg << "failed to open i2c write address " << i2cAddr;
-        throw std::runtime_error(errMsg.str().c_str());
-    }
-    
-    bind(this->i2cRead, this->i2cAddress);
-    bind(this->i2cWrite, this->i2cAddress);
-}
-
-void ThunderBorg::bind(int fd, int addr)
-{
-    std::stringstream errMsg;
-    
-    if (ioctl(fd, I2C_SLAVE, addr) < 0)
-    {
-        errMsg << name_.c_str()
-            << " addr: 0x" << std::hex << addr << std::dec
-            << " error: " << strerror(errno);
-        throw std::runtime_error(errMsg.str().c_str());
-    }
-    
-    std::cout << "Channel #" << fd
-        << " for " << name_.c_str()
-        << "0x" << std::hex << addr << std::dec
-        << " is open." << std::endl;
-}
-
-bool ThunderBorg::read(passbutter::Command cmd, int length, std::string &data, int retryCount)
+bool I2CBus::read(passbutter::Command cmd, int length, std::string &data, int retryCount)
 {
     unsigned char buffer[256];
     std::vector<int> cmdData;
@@ -80,7 +68,7 @@ bool ThunderBorg::read(passbutter::Command cmd, int length, std::string &data, i
     for (int i = 0; i < retryCount; i++)
     {
         write(cmd, cmdData);
-        if (::read(this->i2cRead, buffer, length) != length)
+        if (::read(this->i2cRead.channel, buffer, length) != length)
         {
             continue;
         }
@@ -93,7 +81,7 @@ bool ThunderBorg::read(passbutter::Command cmd, int length, std::string &data, i
     return false;
 }
 
-bool ThunderBorg::write(passbutter::Command cmd, std::vector<int> data)
+bool I2CBus::write(passbutter::Command cmd, std::vector<int> data)
 {
     std::string sample = std::to_string(cmd);
     
@@ -104,13 +92,26 @@ bool ThunderBorg::write(passbutter::Command cmd, std::vector<int> data)
     unsigned char buffer[256];
     std::copy(sample.begin(), sample.end(), buffer);
 
-    if (::write(this->i2cWrite, buffer, sample.length()) != sample.length())
+    if (::write(this->i2cWrite.channel, buffer, sample.length()) != sample.length())
     {
         printf("Failed to write to the i2c bus.\n");
         return false;
     }
     
     return true;
+}
+
+I2CBus::~I2CBus()
+{
+}
+
+ThunderBorg::ThunderBorg(const char *name)
+    : name_(name)
+{
+}
+
+ThunderBorg::~ThunderBorg()
+{
 }
 
 std::vector<int> ThunderBorg::detectBoards(int busNumber)
@@ -122,10 +123,10 @@ std::vector<int> ThunderBorg::detectBoards(int busNumber)
     {
         try
         {
-            initBus(busNumber, address);
+            I2CBus i2cBus = I2CBus(busNumber, address);
+            
             std::string data;
-            read(COMMAND_GET_ID, I2C_MAX_LEN, data);
-            if (data.length() == I2C_MAX_LEN) {
+            if (i2cBus.read(COMMAND_GET_ID, I2C_MAX_LEN, data) && data.length() == I2C_MAX_LEN) {
                 if (data[1] == I2C_ID_THUNDERBORG)
                 {
                     std::cout << "found thunderborg at " << address << std::endl;
