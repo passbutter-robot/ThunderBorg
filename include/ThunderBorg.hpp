@@ -55,7 +55,7 @@ private:
     
     const char* path;
     int address;
-    int channel;
+    int file_i2c;
     
     void bind();
     

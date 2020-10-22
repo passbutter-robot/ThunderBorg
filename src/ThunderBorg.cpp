@@ -15,41 +15,35 @@ I2CChannel::I2CChannel(int busNumber, int address, int mode)
     : path((i2cBasePath + std::to_string(busNumber)).c_str()),
       address(address)
 {
-    if ((this->channel = ::open(this->path, mode)) < 0)
+    if ((this->file_i2c = ::open(this->path, mode)) < 0)
     {
-        std::cout << "failed to open i2c path " << this->path << std::endl;
+        std::cerr << "failed to open i2c channel [" << this->path << "]!" << std::endl;
         throw std::runtime_error("failed to i2c path");
     }
     
     
-    std::cout << "successfully opened i2c channel" << std::endl
-              << "  => address " << this->path << std::endl
-              << "  => mode " << mode << std::endl;
-    
+    std::cout << "successfully opened i2c channel #" << this->file_i2c << " [" << this->path << "," << mode << "]" << std::endl;
     this->bind();
 }
 
 void I2CChannel::bind()
 {
-    if (ioctl(this->channel, I2C_SLAVE, this->address) < 0)
+    if (ioctl(this->file_i2c, I2C_SLAVE, this->address) < 0)
     {
-        std::cout << " addr: 0x" << std::hex << this->address << std::dec
-                  << " error: " << strerror(errno)
-                  << std::endl;
+        std::cerr << "failed to bind channel [0x" << std::hex << this->address << std::dec << "]: error=" << strerror(errno) << "!" << std::endl;
         throw std::runtime_error("failed to bind channel address");
     }
     
-    std::cout << "successfully bound channel #" << this->channel
-        << "to address " << "0x" << std::hex << this->address << std::dec
-        << std::endl;
+    std::cout << "successfully bound channel #" << this->file_i2c << " [" << "0x" << std::hex << this->address << std::dec << "]" << std::endl;
 }
 
 I2CChannel::~I2CChannel()
 {
-    if (this->channel > 0)
+    if (this->file_i2c > 0)
     {
-        close(this->channel);
-        this->channel = -1;
+	std::cout << "close i2c channel #" << this->file_i2c << " [0x" << std::hex << this-> address << std::dec << "]" << std::endl;
+        close(this->file_i2c);
+        this->file_i2c = -1;
     }
 }
     
@@ -63,29 +57,34 @@ I2CBus::I2CBus(int busNumber, int address)
 
 bool I2CBus::read(passbutter::Command cmd, int length, std::string &data, int retryCount)
 {
-    unsigned char buffer[256];
+    unsigned char buffer[256] = {0};
     std::vector<int> cmdData;
     
     for (int i = 0; i < retryCount; i++)
     {
         write(cmd, cmdData);
-        int resultLength = ::read(this->i2cRead.channel, &buffer, length);
-	if (resultLength <= 0) continue;
+        int resultLength = ::read(this->i2cRead.file_i2c, buffer, length);
+        if (resultLength <= 0) continue;
+       
+        data = std::string(reinterpret_cast<char*>(buffer), resultLength);
+        std::cout << "read result length=" << resultLength << " => data= " << std::hex << buffer << std::dec << std::endl;
+        printf("0x%+01x\n", buffer);
+	
+	unsigned char tmp[2] = {0};
+	for (int j = 0; j < resultLength-1; j += 2)
+	{
+            tmp[0] = buffer[j];
+            tmp[1] = buffer[j+1];
+            printf("%+02x\n", tmp);
+	}
 
-        for (int j = 0; j < resultLength; j++) {
-            printf("%c\n", buffer[j]);
-        }
-
-	data = std::string(reinterpret_cast<char*>(buffer), resultLength);
-	std::cout << "read result length=" << resultLength << "buffer[0]=" << buffer[0] << ", data= " << data << std::endl;
-
-	if (data[0] == cmd)
+        if (data[0] == cmd)
         {
-	    return true;
+            return true;
         }
     }
     
-    std::cout << "failed to read data from channel" << std::endl;
+    std::cerr << "failed to read data from channel #" << this->i2cRead.file_i2c << " [0x" << std::hex << this->i2cRead.address << std::dec << "]!" << std::endl;
     return false;
 }
 
@@ -97,14 +96,12 @@ bool I2CBus::write(passbutter::Command cmd, std::vector<int> data)
         sample += std::to_string(*it);
     }
     
-    std::cout << "write sample= " << sample << ", len=" << sample.length() << std::endl;
-
-    int resultLength = ::write(this->i2cWrite.channel, sample.c_str(), sample.length());
-    std::cout << "write sample= " << sample << ", target len=" << sample.length() << ", current len=" << resultLength << std::endl;
+    int resultLength = ::write(this->i2cWrite.file_i2c, sample.c_str(), sample.length());
+    std::cout << "write sample '" << sample << "' with len=" << sample.length() << " => result len=" << resultLength << std::endl;
 
     if (resultLength != sample.length())
     {
-        printf("Failed to write to the i2c bus.\n");
+	    std::cerr << "failed to write to the i2c bus!" << std::endl;
         return false;
     }
     
