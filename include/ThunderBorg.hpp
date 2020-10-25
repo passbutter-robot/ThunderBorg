@@ -68,8 +68,8 @@ public:
     I2CBus(int busNumber, int address);
     ~I2CBus();
     
-    bool write(Command cmd, std::vector<int> data);
-    bool read(passbutter::Command cmd, int length, std::string &data, int retryCount = 3);
+    bool write(Command cmd, unsigned char* data, int length);
+    bool read(passbutter::Command cmd, unsigned char *data, int length, int retryCount = 3);
     
 private:
     int busNumber;
@@ -86,7 +86,7 @@ public:
     ThunderBorg(const char *name);
     ~ThunderBorg();
     
-    std::vector<int> detectBoards(int busNumber = 1);
+    std::vector<int> detectBoards(int busNumber = 1, int addressStart = 0x5, int addressEnd = 0x20);
     
     
 private:    

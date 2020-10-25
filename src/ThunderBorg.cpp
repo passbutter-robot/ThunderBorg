@@ -55,28 +55,23 @@ I2CBus::I2CBus(int busNumber, int address)
 {
 }
 
-bool I2CBus::read(passbutter::Command cmd, int length, std::string &data, int retryCount)
+bool I2CBus::read(passbutter::Command cmd, unsigned char *data, int length, int retryCount)
 {
-    unsigned char buffer[256] = {0};
-    std::vector<int> cmdData;
+    unsigned char writeData[1] = {0};
     
     for (int i = 0; i < retryCount; i++)
     {
-        write(cmd, cmdData);
-        int resultLength = ::read(this->i2cRead.file_i2c, buffer, length);
+        write(cmd, writeData, 0);
+
+        int resultLength = ::read(this->i2cRead.file_i2c, data, length);
         if (resultLength <= 0) continue;
-       
-        data = std::string(reinterpret_cast<char*>(buffer), resultLength);
-        std::cout << "read result length=" << resultLength << " => data= " << std::hex << buffer << std::dec << std::endl;
-        printf("0x%+01x\n", buffer);
-	
-	unsigned char tmp[2] = {0};
-	for (int j = 0; j < resultLength-1; j += 2)
-	{
-            tmp[0] = buffer[j];
-            tmp[1] = buffer[j+1];
-            printf("%+02x\n", tmp);
-	}
+        std::cout << "read result len=" << resultLength << " => data=";
+
+        for (int j=0; j < resultLength; j++)
+        {
+            printf("0x%x ", data[j]);
+        }
+	std::cout << std::endl;	
 
         if (data[0] == cmd)
         {
@@ -88,18 +83,24 @@ bool I2CBus::read(passbutter::Command cmd, int length, std::string &data, int re
     return false;
 }
 
-bool I2CBus::write(passbutter::Command cmd, std::vector<int> data)
+bool I2CBus::write(passbutter::Command cmd, unsigned char* data, int length)
 {
-    std::string sample = std::to_string(cmd);
-    
-    for (std::vector<int>::iterator it = std::begin(data); it != std::end(data); ++it) {
-        sample += std::to_string(*it);
+    unsigned char writeData[length+1] = {0};
+    writeData[0] = cmd;
+    for (int i = 0; i < length; i++)
+    {
+        writeData[i+1] = data[i];
     }
-    
-    int resultLength = ::write(this->i2cWrite.file_i2c, sample.c_str(), sample.length());
-    std::cout << "write sample '" << sample << "' with len=" << sample.length() << " => result len=" << resultLength << std::endl;
 
-    if (resultLength != sample.length())
+    int resultLength = ::write(this->i2cWrite.file_i2c, writeData, length + 1);
+    std::cout << "write sample len=" << (length+1) << ", data=";
+    for (int i = 0; i <= length; i++)
+    {
+        printf("0x%x ", writeData[i]);
+    }
+    std::cout << "=> result len=" << resultLength << std::endl;
+
+    if (resultLength != (length+1))
     {
 	    std::cerr << "failed to write to the i2c bus!" << std::endl;
         return false;
@@ -121,19 +122,19 @@ ThunderBorg::~ThunderBorg()
 {
 }
 
-std::vector<int> ThunderBorg::detectBoards(int busNumber)
+std::vector<int> ThunderBorg::detectBoards(int busNumber, int addressStart, int addressEnd)
 {
     std::cout << "detect boards.." << std::endl;
     std::vector<int> boardAddrs;
     
-    for (int address = 0x03; address <= 0x20; address++)
+    for (int address = addressStart; address <= addressEnd; address++)
     {
         try
         {
             I2CBus i2cBus = I2CBus(busNumber, address);
             
-            std::string data;
-            if (i2cBus.read(COMMAND_GET_ID, I2C_MAX_LEN, data)) {
+            unsigned char data[I2C_MAX_LEN] = {0};
+            if (i2cBus.read(COMMAND_GET_ID, data, I2C_MAX_LEN)) {
                 if (data[1] == I2C_ID_THUNDERBORG)
                 {
                     std::cout << "found thunderborg at " << address << std::endl;
