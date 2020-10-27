@@ -120,6 +120,10 @@ ThunderBorg::ThunderBorg(const char *name)
 
 ThunderBorg::~ThunderBorg()
 {
+    if (bus)
+    {
+        delete bus;
+    }
 }
 
 std::vector<int> ThunderBorg::detectBoards(int busNumber, int addressStart, int addressEnd)
@@ -158,6 +162,11 @@ std::vector<int> ThunderBorg::detectBoards(int busNumber, int addressStart, int 
     }
     
     return boardAddrs;
+}
+
+void ThunderBorg::initBus(int address, int busNumber)
+{
+    this->bus = new I2CBus(busNumber, address);
 }
 
 void ThunderBorg::setMotor(passbutter::Motor motor, double power)
