@@ -71,7 +71,7 @@ bool I2CBus::read(passbutter::Command cmd, unsigned char *data, int length, int 
         {
             printf("0x%x ", data[j]);
         }
-	std::cout << std::endl;	
+        std::cout << std::endl;	
 
         if (data[0] == cmd)
         {
@@ -158,6 +158,63 @@ std::vector<int> ThunderBorg::detectBoards(int busNumber, int addressStart, int 
     }
     
     return boardAddrs;
+}
+
+void ThunderBorg::setMotor(passbutter::Motor motor, double power)
+{
+    int pwm = 0;
+    Command cmd;
+    
+    if (power < 0)
+    {
+        switch (motor) {
+            case MOTOR_1:
+                cmd = COMMAND_SET_A_REV;
+                break;
+            case MOTOR_2:
+                cmd = COMMAND_SET_B_REV;
+                break;
+            default:
+                throw std::runtime_error("motor not handled");
+        }
+    }
+    else
+    {
+        switch (motor) {
+            case MOTOR_1:
+                cmd = COMMAND_SET_A_FWD;
+                break;
+            case MOTOR_2:
+                cmd = COMMAND_SET_B_FWD;
+                break;
+            default:
+                throw std::runtime_error("motor not handled");
+        }
+    }
+    
+    pwm = int(PWM_MAX * power);
+    if (pwm > PWM_MAX) pwm = PWM_MAX;
+    if (power < 0) pwm *= -1;
+    
+    try 
+    {
+        unsigned char data[1] = { (unsigned char)pwm };
+        this->bus->write(cmd, data, 1);
+    }
+    catch (...)
+    {
+        std::cerr << "failed to set motor " << motor << " to " << power << std::endl;
+    }
+}
+
+void ThunderBorg::setMotor1(double power)
+{
+    setMotor(MOTOR_1, power);
+}
+
+void ThunderBorg::setMotor2(double power)
+{
+    setMotor(MOTOR_2, power);
 }
 
 }

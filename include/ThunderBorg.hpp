@@ -44,6 +44,12 @@ enum Command
     COMMAND_ANALOG_MAX          = 0x3FF // Maximum value for analog readings   
 };
 
+enum Motor
+{
+    MOTOR_1,
+    MOTOR_2
+};
+
 class I2CChannel
 {
 public:
@@ -87,6 +93,8 @@ public:
     ~ThunderBorg();
     
     std::vector<int> detectBoards(int busNumber = 1, int addressStart = 0x5, int addressEnd = 0x20);
+    void setMotor1(double power);
+    void setMotor2(double power);
     
     
 private:    
@@ -103,6 +111,8 @@ private:
     I2CBus *bus;
     
     std::string name_;
+    
+    void setMotor(Motor motor, double power);
 };
 
 }
