@@ -226,4 +226,73 @@ void ThunderBorg::setMotor2(double power)
     setMotor(MOTOR_2, power);
 }
 
+MotorControl::MotorControl(const char *name)
+    : ThunderBorg(name)
+{
+}
+
+MotorControl::~MotorControl()
+{
+}
+
+StepperControl::StepperControl(const char* name, double maxPower, double holdingPower)
+    : ThunderBorg(name)
+{
+    this->setMaxPower(maxPower);
+    this->setHoldingPower(holdingPower);
+    this->step = -1;
+    this->position = 0;
+}
+
+StepperControl::~StepperControl()
+{
+}
+
+void StepperControl::setMaxPower(double maxPower)
+{
+    this->maxPower = maxPower;
+    this->sequence = {{
+        { +this->maxPower, +this->maxPower },
+        { +this->maxPower, -this->maxPower },
+        { -this->maxPower, -this->maxPower },
+        { -this->maxPower, +this->maxPower }
+    }};
+}
+
+void StepperControl::setHoldingPower(double holdingPower)
+{
+    this->holdingPower = holdingPower;
+    this->sequenceHold = {{
+        { +this->holdingPower, +this->holdingPower },
+        { +this->holdingPower, -this->holdingPower },
+        { -this->holdingPower, -this->holdingPower },
+        { -this->holdingPower, +this->holdingPower }
+    }};
+}
+
+void StepperControl::move(bool backwards)
+{
+    if (this->step < 0) this->step = this->sequence.size() - 1;
+    else if (this->step >= this->sequence.size()) this->step = 0;
+    
+    this->setMotor1(this->sequence[this->step][0]);
+    this->setMotor2(this->sequence[this->step][1]);
+    
+    
+    int direction = 1;
+    if (backwards) direction = -1;
+    
+    this->step += direction;
+    this->position += direction;
+}
+
+void StepperControl::holdPosition()
+{
+    if (this->step < this->sequenceHold.size())
+    {
+        this->setMotor1(this->sequenceHold[this->step][0]);
+        this->setMotor2(this->sequenceHold[this->step][1]);
+    }
+}
+
 }

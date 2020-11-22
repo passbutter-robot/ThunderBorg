@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <array>
 
 namespace passbutter
 {
@@ -113,6 +114,41 @@ private:
     std::string name_;
     
     void setMotor(Motor motor, double power);
+    
 };
+
+class MotorControl : public ThunderBorg 
+{
+    
+public:
+    MotorControl(const char *name);
+    ~MotorControl();
+    
+};
+
+class StepperControl : public ThunderBorg 
+{
+    
+private:
+    double maxPower;
+    double holdingPower;
+    
+    int step;
+    int position;
+    
+    std::array<std::array<double, 2>, 4> sequence;
+    std::array<std::array<double, 2>, 4> sequenceHold;
+    
+public:
+    StepperControl(const char *name, double maxPower, double holdingPower);
+    ~StepperControl();
+    
+    void move(bool backwards);
+    void holdPosition();
+    
+    void setMaxPower(double maxPower);
+    void setHoldingPower(double holdingPower);
+};
+
 
 }

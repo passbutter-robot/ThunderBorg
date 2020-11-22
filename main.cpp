@@ -3,20 +3,19 @@
 #include "include/ThunderBorg.hpp"
 
 int main(int argc, char **argv) {
-    passbutter::ThunderBorg thunderborg("test");
+    passbutter::MotorControl motorControl("test");
     
-    std::vector<int> boardAddrs = thunderborg.detectBoards(1);
+    std::vector<int> boardAddrs = motorControl.detectBoards(1);
     if (boardAddrs.size() == 0)
     {
         std::cout << "no boards detected.." << std::endl;
     }
     
-    thunderborg.initBus(boardAddrs[0]);
+    motorControl.initBus(boardAddrs[0]);
     
-    thunderborg.setMotor1(0.3);
+    motorControl.setMotor1(0.3);
     usleep(1000);
-    thunderborg.setMotor1(0);
+    motorControl.setMotor1(0);
     
-    std::cout << "Hello, world!" << std::endl;
     return 0;
 }
