@@ -148,6 +148,8 @@ public:
     
     void setMaxPower(double maxPower);
     void setHoldingPower(double holdingPower);
+
+    void initSteps();
 };
 
 

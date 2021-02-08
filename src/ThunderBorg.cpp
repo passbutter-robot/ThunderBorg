@@ -248,6 +248,19 @@ StepperControl::~StepperControl()
 {
 }
 
+void StepperControl::initSteps()
+{
+    if (this->step == -1)
+    {
+        auto p = this->sequence[this->sequence.size() -1];
+        this->setMotor1(p[0]);
+        this->setMotor2(p[1]);
+        this->step = 0;
+    }
+
+    this->position = 0;
+}
+
 void StepperControl::setMaxPower(double maxPower)
 {
     this->maxPower = maxPower;
