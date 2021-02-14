@@ -21,7 +21,6 @@ I2CChannel::I2CChannel(int busNumber, int address, int mode)
         throw std::runtime_error("failed to i2c path");
     }
     
-    
     std::cout << "successfully opened i2c channel #" << this->file_i2c << " [" << this->path << "," << mode << "]" << std::endl;
     this->bind();
 }
@@ -65,13 +64,13 @@ bool I2CBus::read(passbutter::Command cmd, unsigned char *data, int length, int 
 
         int resultLength = ::read(this->i2cRead.file_i2c, data, length);
         if (resultLength <= 0) continue;
-        std::cout << "read result len=" << resultLength << " => data=";
-
-        for (int j=0; j < resultLength; j++)
-        {
-            printf("0x%x ", data[j]);
-        }
-        std::cout << std::endl;	
+        
+        //std::cout << "read result len=" << resultLength << " => data=";
+        //for (int j=0; j < resultLength; j++)
+        //{
+        //    printf("0x%x ", data[j]);
+        //}
+        //std::cout << std::endl;	
 
         if (data[0] == cmd)
         {
@@ -93,12 +92,12 @@ bool I2CBus::write(passbutter::Command cmd, unsigned char* data, int length)
     }
 
     int resultLength = ::write(this->i2cWrite.file_i2c, writeData, length + 1);
-    std::cout << "write sample len=" << (length+1) << ", data=";
-    for (int i = 0; i <= length; i++)
-    {
-        printf("0x%x ", writeData[i]);
-    }
-    std::cout << "=> result len=" << resultLength << std::endl;
+    //std::cout << "write sample len=" << (length+1) << ", data=";
+    //for (int i = 0; i <= length; i++)
+    //{
+    //    printf("0x%x ", writeData[i]);
+    //}
+    //std::cout << "=> result len=" << resultLength << std::endl;
 
     if (resultLength != (length+1))
     {
