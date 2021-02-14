@@ -150,6 +150,7 @@ public:
     void setHoldingPower(double holdingPower);
 
     void initSteps();
+    void stop();
 };
 
 

@@ -245,6 +245,13 @@ StepperControl::StepperControl(const char* name, double maxPower, double holding
 
 StepperControl::~StepperControl()
 {
+    this->stop();
+}
+
+void StepperControl::stop()
+{
+    this->setMotor1(0);
+    this->setMotor2(0);
 }
 
 void StepperControl::initSteps()
