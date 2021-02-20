@@ -163,6 +163,68 @@ std::vector<int> ThunderBorg::detectBoards(int busNumber, int addressStart, int 
     return boardAddrs;
 }
 
+bool ThunderBorg::updateBoardAdress(int newBoardAddress, int currentBoardAddress, int busNumber)
+{
+    std::vector<int> boardAddresses;
+    if (currentBoardAddress < 0)
+    {
+        std::cout << "no current board address given.. try to detect boards.." << std::endl;
+        boardAddresses = this->detectBoards(busNumber);
+    }
+    else
+    {
+        std::cout << "try to find board with address " << currentBoardAddress << ".." << std::endl;
+        boardAddresses = this->detectBoards(busNumber, currentBoardAddress, currentBoardAddress);
+    }
+    
+    if (boardAddresses.size() == 0)
+    {
+        std::cerr << "no boards detected!" << std::endl;
+        return false;
+    }
+    
+    int boardAddress = boardAddresses[0];
+    std::cout << "found " << boardAddresses.size() << " boards: first board address is " << boardAddress << "." << std::endl;
+    
+    I2CBus* bus = nullptr;
+    try
+    {
+        std::cout << "try to setup the i2c bus for bus number " << busNumber << ".." << std::endl;
+        bus = new I2CBus(busNumber, boardAddress);
+    }
+    catch(...)
+    {
+        std::cerr << "failed to setup the i2c bus for bus number " << busNumber << ", address " << boardAddresses[0] << "!" << std::endl;
+        return false;
+    }
+
+    std::cout << "try to update the boards address " << boardAddress << " to " << newBoardAddress << std::endl; 
+    try
+    {
+        unsigned char data[1] = { (unsigned char)newBoardAddress };
+        bus->write(Command::COMMAND_SET_I2C_ADD, data, 1);
+    }
+    catch(...)
+    {
+        std::cerr << "failed to update the board address " << boardAddress << " to " << newBoardAddress << std::endl;
+        return false;
+    }
+
+    usleep(100);
+    
+    std::cout << "check if the board address has been successfully updated.." << std::endl;
+    boardAddresses = this->detectBoards(busNumber, newBoardAddress, newBoardAddress);
+
+    if (boardAddresses.size() == 0 || boardAddresses[0] != newBoardAddress)
+    {
+        std::cerr << "failed to update the board address " << boardAddress << " to " << newBoardAddress << "!" << std::endl;
+        return false;
+    }
+
+    std::cout << "the board address " << boardAddress << " has been successfully updated to " << newBoardAddress << std::endl;
+    return true;
+}
+
 void ThunderBorg::initBus(int address, int busNumber)
 {
     this->bus = new I2CBus(busNumber, address);

@@ -94,6 +94,8 @@ public:
     ~ThunderBorg();
     
     std::vector<int> detectBoards(int busNumber = 1, int addressStart = 0x5, int addressEnd = 0x20);
+    bool updateBoardAdress(int newBoardAddress, int currentBoardAddress = -1, int busNumber = 1);
+
     void initBus(int address, int busNumber = 1);
     void setMotor1(double power);
     void setMotor2(double power);
