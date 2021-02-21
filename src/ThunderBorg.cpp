@@ -297,7 +297,7 @@ MotorControl::~MotorControl()
     this->stop();
 }
 
-MotorControl::stop()
+void MotorControl::stop()
 {
     this->setMotor1(0);
     this->setMotor2(0);
