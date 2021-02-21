@@ -116,7 +116,6 @@ private:
     std::string name_;
     
     void setMotor(Motor motor, double power);
-    
 };
 
 class MotorControl : public ThunderBorg 
@@ -125,7 +124,8 @@ class MotorControl : public ThunderBorg
 public:
     MotorControl(const char *name);
     ~MotorControl();
-    
+
+    void stop();
 };
 
 class StepperControl : public ThunderBorg 
@@ -154,6 +154,5 @@ public:
     void initSteps();
     void stop();
 };
-
 
 }

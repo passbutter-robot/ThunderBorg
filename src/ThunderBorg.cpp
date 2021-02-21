@@ -294,6 +294,13 @@ MotorControl::MotorControl(const char *name)
 
 MotorControl::~MotorControl()
 {
+    this->stop();
+}
+
+MotorControl::stop()
+{
+    this->setMotor1(0);
+    this->setMotor2(0);
 }
 
 StepperControl::StepperControl(const char* name, double maxPower, double holdingPower)
